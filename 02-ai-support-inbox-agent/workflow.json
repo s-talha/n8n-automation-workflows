@@ -1,0 +1,492 @@
+{
+  "name": "AI Support Inbox Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Support Inbox Agent\nReads every new support email, answers it from the knowledge base and order data, and escalates anything sensitive to a human.\n\n- RAG over help center articles in Pinecone\n- Live order lookup in Google Sheets\n- Confidence check before any reply is sent",
+        "height": 190,
+        "width": 480
+      },
+      "id": "eb2ab052-f6be-4434-922e-4d9f0af2dded",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ],
+          "q": "to:support@ -category:promotions"
+        },
+        "options": {}
+      },
+      "id": "6e8f666d-c7ee-4ed5-ad6f-12206ca80f55",
+      "name": "New Support Email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "29cbf8fc-6052-4f32-a470-4c606dc74c58",
+              "leftValue": "={{ $json.headers['auto-submitted'] }}",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c59bbf77-965e-4d2b-a059-33f792aa0721",
+              "leftValue": "={{ $json.from.value[0].address }}",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              },
+              "rightValue": "noreply"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "febe6e12-4960-4208-a5b7-c4648bcf1081",
+      "name": "Skip Auto Replies",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "hasOutputParser": true,
+        "text": "=From: {{ $json.from.value[0].name }}\nSubject: {{ $json.subject }}\n\n{{ $json.text }}",
+        "options": {
+          "systemMessage": "You are a friendly support agent. Always search the knowledge base first and look up orders by email when the customer asks about delivery or refunds. Never promise refunds over 100 EUR. Return reply, confidence (0 to 1) and needs_human."
+        }
+      },
+      "id": "68b3564c-b770-41ad-8e9d-ada66b6c23b1",
+      "name": "Support Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "a6d4b0cf-ba3b-4ba4-9ebc-e88cc9fea8c4",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        340,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('New Support Email').item.json.threadId }}",
+        "contextWindowLength": 10
+      },
+      "id": "7735d696-209d-4405-96f9-119744a2c632",
+      "name": "Thread Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        490,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "help_center",
+        "toolDescription": "Search help center articles, policies and FAQs.",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "support-kb",
+          "mode": "list",
+          "cachedResultName": "support-kb"
+        },
+        "options": {}
+      },
+      "id": "0272eca1-8ad0-4c93-af05-0a6da502fe17",
+      "name": "Help Center KB",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Find orders by customer email. Returns status, carrier and tracking number.",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Orders"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "email",
+              "lookupValue": "={{ $fromAI('email') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "74eb1aed-7a72-47d1-a4cb-042a8614065b",
+      "name": "Order Lookup",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.5,
+      "position": [
+        790,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"reply\": \"Hi Sam, your order shipped yesterday...\",\n  \"confidence\": 0.92,\n  \"needs_human\": false\n}"
+      },
+      "id": "bd20502c-b22b-4986-9470-c898c582e16f",
+      "name": "Answer Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        940,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "9d7d93b2-9f82-4a84-a2b3-2e2d64710dad",
+      "name": "OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "130c9d72-553f-41e1-a5d3-19fc7dd93f4f",
+              "leftValue": "={{ $json.output.confidence }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": 0.8
+            },
+            {
+              "id": "04e7b3e8-cc89-4e2c-9b41-e7587e59a11c",
+              "leftValue": "={{ $json.output.needs_human }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e1017705-0aaf-47bd-aa47-681f67e6f254",
+      "name": "Confident Answer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        840,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('New Support Email').item.json.id }}",
+        "message": "={{ $json.output.reply }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "cc6953a2-5e32-4004-ac90-4c29fa386313",
+      "name": "Reply to Customer",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1080,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('New Support Email').item.json.id }}",
+        "labelIds": [
+          "Label_AutoResolved"
+        ]
+      },
+      "id": "5ad8e309-a998-4823-898d-5cc0cbd32879",
+      "name": "Label: Auto Resolved",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1320,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#support-escalations",
+          "mode": "name"
+        },
+        "text": "=Needs a human: *{{ $('New Support Email').item.json.subject }}*\nDraft: {{ $json.output.reply }}",
+        "otherOptions": {}
+      },
+      "id": "af6fb8d4-d876-4987-9cd1-38dd32924a98",
+      "name": "Escalate in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1080,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('New Support Email').item.json.id }}",
+        "labelIds": [
+          "Label_NeedsHuman"
+        ]
+      },
+      "id": "0883025d-cbf7-4d1f-b510-6de458a275bc",
+      "name": "Label: Needs Human",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1320,
+        420
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Support Email": {
+      "main": [
+        [
+          {
+            "node": "Skip Auto Replies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Auto Replies": {
+      "main": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Support Agent": {
+      "main": [
+        [
+          {
+            "node": "Confident Answer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Thread Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Help Center KB": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order Lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Help Center KB",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confident Answer?": {
+      "main": [
+        [
+          {
+            "node": "Reply to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Escalate in Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply to Customer": {
+      "main": [
+        [
+          {
+            "node": "Label: Auto Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalate in Slack": {
+      "main": [
+        [
+          {
+            "node": "Label: Needs Human",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c7cc28b6-fdd2-476a-9b86-1f40f41c2751",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

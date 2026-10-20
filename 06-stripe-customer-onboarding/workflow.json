@@ -1,0 +1,350 @@
+{
+  "name": "Stripe Customer Onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Stripe Customer Onboarding\nThe moment a checkout completes, the customer is provisioned, recorded and welcomed across every tool.\n\n- Account provisioning through your app API\n- Airtable customer record and Notion onboarding page\n- Welcome email plus a team alert",
+        "height": 200,
+        "width": 480
+      },
+      "id": "6b77342b-02a1-4d1c-95a9-49fe2cff864f",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -170
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Error handling\nSet this workflow as its own error workflow in Settings. Any failed run posts the node and error message to Slack.",
+        "height": 120,
+        "width": 470,
+        "color": 2
+      },
+      "id": "dbd21fe9-4d84-495a-aa02-dafc17751d86",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "events": [
+          "checkout.session.completed"
+        ]
+      },
+      "id": "29d5f2ed-b739-4bba-aba3-2388866fcbca",
+      "name": "Checkout Completed",
+      "type": "n8n-nodes-base.stripeTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        280
+      ],
+      "webhookId": "5c898b14-2986-46d2-8b43-b70f52f3e4c4"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.stripe.com/v1/customers/{{ $json.data.object.customer }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "stripeApi",
+        "options": {}
+      },
+      "id": "6bde56cb-6f5b-4ea1-b147-91724d7096ed",
+      "name": "Get Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c8e486ea-4095-45d6-b2cc-b22e6e1dc10e",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "585ff042-fa23-493f-8e8b-466bca83578b",
+              "name": "name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "5f785856-8c1a-490a-9f56-7f045014ccff",
+              "name": "plan",
+              "value": "={{ $('Checkout Completed').item.json.data.object.metadata.plan }}",
+              "type": "string"
+            },
+            {
+              "id": "9f71e060-a30c-4e59-a305-a65cabff576e",
+              "name": "mrr",
+              "value": "={{ $('Checkout Completed').item.json.data.object.amount_total / 100 }}",
+              "type": "number"
+            },
+            {
+              "id": "983591d5-4633-4fea-94b2-477dcf0e30e1",
+              "name": "stripe_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2977d2bb-2328-40d1-8376-acf9d9f6e91f",
+      "name": "Map Customer",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.yourapp.com/internal/accounts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { email: $json.email, plan: $json.plan, stripe_customer_id: $json.stripe_id } }}",
+        "options": {
+          "retry": {
+            "maxTries": 3
+          }
+        }
+      },
+      "id": "c724f56e-583f-4d15-9444-c61c90594998",
+      "name": "Provision Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Customers"
+        },
+        "table": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Accounts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "afd2f26e-170d-4f64-814e-dc5fb777b7f2",
+      "name": "Create Customer Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        960,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Onboarding"
+        },
+        "title": "={{ $('Map Customer').item.json.name }} onboarding",
+        "propertiesUi": {
+          "propertyValues": []
+        },
+        "options": {}
+      },
+      "id": "4c24cd14-293d-4993-885c-bec49e457560",
+      "name": "Onboarding Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Map Customer').item.json.email }}",
+        "subject": "Welcome aboard! Your account is ready",
+        "message": "=Hi {{ $('Map Customer').item.json.name }}, your {{ $('Map Customer').item.json.plan }} workspace is live. Log in here: {{ $json.login_url }}",
+        "options": {}
+      },
+      "id": "f61feb7a-a2cb-4d52-8613-7e16ddba5895",
+      "name": "Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        960,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#new-customers",
+          "mode": "name"
+        },
+        "text": "=:tada: New {{ $('Map Customer').item.json.plan }} customer: {{ $('Map Customer').item.json.name }} ({{ $('Map Customer').item.json.mrr }} EUR)",
+        "otherOptions": {}
+      },
+      "id": "d33f4dc5-2edf-414a-bba8-6cae2fb4117a",
+      "name": "Announce New Customer",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        280
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f799bf3b-c2a6-44bf-bbd8-83b068a0e6fa",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#automation-alerts",
+          "mode": "name"
+        },
+        "text": "=:rotating_light: {{ $json.workflow.name }} failed at *{{ $json.execution.lastNodeExecuted }}*\n{{ $json.execution.error.message }}\n{{ $json.execution.url }}",
+        "otherOptions": {}
+      },
+      "id": "4512b0e3-833e-4d57-9e83-a43e07ca0945",
+      "name": "Alert Engineering",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        640
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Checkout Completed": {
+      "main": [
+        [
+          {
+            "node": "Get Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Customer": {
+      "main": [
+        [
+          {
+            "node": "Map Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Customer": {
+      "main": [
+        [
+          {
+            "node": "Provision Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Provision Account": {
+      "main": [
+        [
+          {
+            "node": "Create Customer Record",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Onboarding Page",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Onboarding Page": {
+      "main": [
+        [
+          {
+            "node": "Announce New Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Alert Engineering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dd6d1acd-4de6-4528-9215-c2801a319e13",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

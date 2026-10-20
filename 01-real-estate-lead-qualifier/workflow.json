@@ -1,0 +1,545 @@
+{
+  "name": "AI Real Estate Lead Qualifier",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Real Estate Lead Qualifier\nCaptures website and portal leads, scores them with an AI agent and routes each lead to the right follow up in under 30 seconds.\n\n- Hot leads: deal in HubSpot, Slack alert, instant SMS\n- Warm leads: CRM contact plus nurture email\n- Cold leads: logged to Google Sheets",
+        "height": 200,
+        "width": 470
+      },
+      "id": "324b23b3-e330-4906-b059-d443f0827526",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Setup\n- HubSpot, Slack, Twilio, Gmail, Google Sheets and OpenAI credentials\n- Point your form or portal webhook at `/webhook/new-lead`\n- Tune the scoring rubric in the agent system prompt",
+        "height": 140,
+        "width": 430,
+        "color": 7
+      },
+      "id": "b96c5909-c719-48c4-8693-22d51a588186",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9ac15313-9f07-4549-a4e2-95bffd44e1fc",
+      "name": "New Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "69d9d454-574b-480e-b897-3c747fab3a2d"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"received\" } }}",
+        "options": {}
+      },
+      "id": "5f0341e9-22aa-4bd0-93d8-f568e228abb4",
+      "name": "Respond 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aa244732-c0a5-4ad4-8fbc-a5c00e524ab6",
+              "name": "name",
+              "value": "={{ $json.body.name }}",
+              "type": "string"
+            },
+            {
+              "id": "3a257fa6-a4da-4070-8a7c-5af6817684a4",
+              "name": "email",
+              "value": "={{ $json.body.email.toLowerCase().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "887b7fe4-0e88-4a84-bbd5-9431e1f9150c",
+              "name": "phone",
+              "value": "={{ $json.body.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "a9a1ebba-1c21-4155-8039-8c66153fcac6",
+              "name": "budget",
+              "value": "={{ Number($json.body.budget) }}",
+              "type": "number"
+            },
+            {
+              "id": "4c31574b-8c19-4bba-84fd-b813cce709b4",
+              "name": "timeline",
+              "value": "={{ $json.body.timeline }}",
+              "type": "string"
+            },
+            {
+              "id": "99b7c4cd-8f3e-4f46-a859-3e1607180408",
+              "name": "message",
+              "value": "={{ $json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "101b6835-34e6-4978-9e9c-5822f9dfaef5",
+              "name": "source",
+              "value": "={{ $json.body.source || 'website' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1b1fe407-0163-4e5f-8041-b0f807e72cb0",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "hasOutputParser": true,
+        "text": "=Lead: {{ $json.name }}\nBudget: {{ $json.budget }}\nTimeline: {{ $json.timeline }}\nSource: {{ $json.source }}\nMessage: {{ $json.message }}",
+        "options": {
+          "systemMessage": "You are a real estate inside sales assistant. Score the lead from 0 to 100 on intent, budget fit and timeline. Use the listing tool when a property is mentioned. Return tier hot (75+), warm (40 to 74) or cold, a one line summary and a suggested first message."
+        }
+      },
+      "id": "6867c8c1-0f64-431c-ae2a-387f60242833",
+      "name": "Qualify Lead",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "4e7b33d5-58c8-4fda-aa28-54301be29f23",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        470,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Look up an active listing by address or MLS id to check price and availability.",
+        "url": "https://api.example-mls.com/v1/listings/search",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "q"
+            }
+          ]
+        }
+      },
+      "id": "2b208848-8dd5-4bed-b82f-e0ceb8bb62d0",
+      "name": "Listing Lookup",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        620,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"score\": 82,\n  \"tier\": \"hot\",\n  \"summary\": \"Pre approved buyer, 2 bed in Vasastan, moving in 6 weeks\",\n  \"first_message\": \"Hi Anna, thanks for reaching out...\"\n}"
+      },
+      "id": "6653c1f4-e6d6-4968-bc4c-f50afbecb5dc",
+      "name": "Lead Score Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        780,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b551e4c9-08b4-4f4d-b448-9ccb27b39b26",
+                    "leftValue": "={{ $json.output.tier }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "hot"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1a54b5cc-b46d-4a0f-b328-a4698b87bbd2",
+                    "leftValue": "={{ $json.output.tier }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "warm"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Warm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "85284d97-9409-4538-a735-d6379d97afa4",
+                    "leftValue": "={{ $json.output.tier }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "cold"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cold"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "971ad08c-82da-4634-85c2-a7b34488092c",
+      "name": "Route by Tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "deal",
+        "operation": "create",
+        "stage": "appointmentscheduled",
+        "additionalFields": {
+          "dealName": "={{ $('Normalize Lead').item.json.name }} | {{ $json.output.summary }}"
+        }
+      },
+      "id": "f4b2d1ae-982d-468f-a92f-9dcbd4f9aafc",
+      "name": "Create Deal",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [
+        1060,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#hot-leads",
+          "mode": "name"
+        },
+        "text": "=:fire: Hot lead ({{ $('Qualify Lead').item.json.output.score }}/100): {{ $('Normalize Lead').item.json.name }}\n{{ $('Qualify Lead').item.json.output.summary }}",
+        "otherOptions": {}
+      },
+      "id": "e7b02f89-b890-4876-b657-e92b1c180483",
+      "name": "Alert Listing Agent",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "from": "+46700000000",
+        "to": "={{ $('Normalize Lead').item.json.phone }}",
+        "message": "={{ $('Qualify Lead').item.json.output.first_message }}",
+        "options": {}
+      },
+      "id": "84764ae7-aa47-4566-a81c-b36991bc055d",
+      "name": "Text Lead Instantly",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        170
+      ]
+    },
+    {
+      "parameters": {
+        "email": "={{ $('Normalize Lead').item.json.email }}",
+        "additionalFields": {
+          "firstName": "={{ $('Normalize Lead').item.json.name.split(' ')[0] }}",
+          "leadStatus": "OPEN"
+        }
+      },
+      "id": "b2951e27-b888-4f79-a8af-3895302cf3b9",
+      "name": "Upsert Contact",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [
+        1060,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Normalize Lead').item.json.email }}",
+        "subject": "Homes that match what you are looking for",
+        "message": "={{ $('Qualify Lead').item.json.output.first_message }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3625d797-059f-4519-b5e1-4a1ffc685724",
+      "name": "Send Nurture Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1300,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "fe5cde68-1f54-4dbf-b10f-8c9e4c50d203",
+      "name": "Log Cold Lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1060,
+        500
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 OK",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Qualify Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualify Lead": {
+      "main": [
+        [
+          {
+            "node": "Route by Tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Qualify Lead",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listing Lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "Qualify Lead",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Score Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Qualify Lead",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Tier": {
+      "main": [
+        [
+          {
+            "node": "Create Deal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upsert Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Cold Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Deal": {
+      "main": [
+        [
+          {
+            "node": "Alert Listing Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Text Lead Instantly",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Contact": {
+      "main": [
+        [
+          {
+            "node": "Send Nurture Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "849f6e3b-98a6-4b57-b05b-b731908553b6",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

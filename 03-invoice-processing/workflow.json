@@ -1,0 +1,425 @@
+{
+  "name": "Invoice Processing with AI",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Invoice Processing with AI\nTurns PDF invoices from email into approved bills in QuickBooks with a full audit trail.\n\n- AI extraction of vendor, totals, VAT and line items\n- Approval in Slack for invoices above 5,000 EUR\n- Ledger row for every invoice",
+        "height": 190,
+        "width": 470
+      },
+      "id": "b58d9060-4e70-4f6f-b614-c5d6a46ff909",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf label:invoices"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "id": "cb97a0b7-7a07-4234-9fdd-2e4dca22bb76",
+      "name": "Invoice Email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "attachment_0",
+        "options": {}
+      },
+      "id": "3fd27fe5-c63c-4249-9684-22efa7f7543e",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "hasOutputParser": true,
+        "text": "=Extract the invoice fields from this text. Use ISO dates and numbers without currency symbols.\n\n{{ $json.text }}"
+      },
+      "id": "afc7f741-2228-4ae7-b206-41d26a902506",
+      "name": "Extract Invoice Data",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-5",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "38097bda-0e2b-41a8-b605-da5c5fa46a02",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        420,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"vendor\": \"Nordic Office AB\",\n  \"invoice_number\": \"INV-20931\",\n  \"invoice_date\": \"2026-10-02\",\n  \"due_date\": \"2026-11-01\",\n  \"currency\": \"EUR\",\n  \"subtotal\": 4200,\n  \"vat\": 1050,\n  \"total\": 5250,\n  \"line_items\": [{\"description\": \"Desks\", \"qty\": 6, \"amount\": 4200}]\n}"
+      },
+      "id": "36aea39d-ab6d-4a86-88ac-39a8daf580f9",
+      "name": "Invoice Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ff82f3b-7cb5-4e77-b678-711f46a88bca",
+              "leftValue": "={{ $json.output.total }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 5000
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7d048e3b-d11c-497c-810f-1ec26bd59be8",
+      "name": "Over 5,000 EUR?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#finance-approvals",
+          "mode": "name"
+        },
+        "message": "=Approve invoice {{ $json.output.invoice_number }} from {{ $json.output.vendor }} for {{ $json.output.total }} {{ $json.output.currency }}?",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double"
+          }
+        },
+        "options": {}
+      },
+      "id": "80011893-349c-4ead-b1ec-54d2eee06af8",
+      "name": "Request Approval",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1020,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "310c2296-3849-4791-805f-f9371d52836a",
+              "leftValue": "={{ $json.data.approved }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "73c61ad3-3d16-4f2c-921b-185e4b10195b",
+      "name": "Rejected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1260,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "ap@yourcompany.com",
+        "subject": "=Invoice {{ $('Extract Invoice Data').item.json.output.invoice_number }} rejected",
+        "message": "Rejected in Slack. Please follow up with the vendor.",
+        "options": {}
+      },
+      "id": "3f894bc1-824e-41a7-b2e5-029f93697a89",
+      "name": "Notify Rejection",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1500,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "bill",
+        "operation": "create",
+        "VendorRef": "={{ $('Extract Invoice Data').item.json.output.vendor }}",
+        "Line": [],
+        "additionalFields": {
+          "DueDate": "={{ $('Extract Invoice Data').item.json.output.due_date }}"
+        }
+      },
+      "id": "232309bd-a32f-4e6c-90e4-da8438325f6e",
+      "name": "Create Bill",
+      "type": "n8n-nodes-base.quickbooks",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "bill",
+        "operation": "create",
+        "VendorRef": "={{ $json.output.vendor }}",
+        "Line": [],
+        "additionalFields": {
+          "DueDate": "={{ $json.output.due_date }}"
+        }
+      },
+      "id": "d6c78c01-d9f9-4670-b279-ec6afe23af62",
+      "name": "Create Bill (auto)",
+      "type": "n8n-nodes-base.quickbooks",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "edd2f1e9-30da-4158-8d81-203dfd157570",
+      "name": "Append to Ledger",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1740,
+        320
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Invoice Email": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Extract Invoice Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Invoice Data": {
+      "main": [
+        [
+          {
+            "node": "Over 5,000 EUR?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Invoice Data",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoice Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Extract Invoice Data",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Over 5,000 EUR?": {
+      "main": [
+        [
+          {
+            "node": "Request Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Bill (auto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Approval": {
+      "main": [
+        [
+          {
+            "node": "Rejected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rejected?": {
+      "main": [
+        [
+          {
+            "node": "Notify Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Bill",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Bill": {
+      "main": [
+        [
+          {
+            "node": "Append to Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Bill (auto)": {
+      "main": [
+        [
+          {
+            "node": "Append to Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "160e5611-4ee9-4c44-b644-f4c8cc27ac86",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

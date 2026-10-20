@@ -1,0 +1,339 @@
+{
+  "name": "Viewing Bookings and SMS Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Viewing Bookings and SMS Reminders\nWhen a buyer books a property viewing in Calendly, the CRM is updated, a confirmation goes out and two SMS reminders are scheduled.\n\nCancellations are flagged to the team instantly.",
+        "height": 180,
+        "width": 470
+      },
+      "id": "f4e85446-7597-4e96-ab3e-35a8bd9dec54",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -170
+      ]
+    },
+    {
+      "parameters": {
+        "events": [
+          "invitee.created"
+        ]
+      },
+      "id": "91b7a305-06bc-40d5-8e56-d0f9366f5668",
+      "name": "Viewing Booked",
+      "type": "n8n-nodes-base.calendlyTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        260
+      ],
+      "webhookId": "0840049d-4f27-4357-b090-f78671e9fad2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bb1e4fd-e981-4cba-b571-b9bd408ea7a7",
+              "name": "name",
+              "value": "={{ $json.payload.name }}",
+              "type": "string"
+            },
+            {
+              "id": "37baa6ad-243d-414a-b03c-65c3052096c1",
+              "name": "email",
+              "value": "={{ $json.payload.email }}",
+              "type": "string"
+            },
+            {
+              "id": "61aa0fdb-da35-4f4a-9393-9ad962fff6c4",
+              "name": "phone",
+              "value": "={{ $json.payload.text_reminder_number }}",
+              "type": "string"
+            },
+            {
+              "id": "aee32a6e-3438-4084-86e0-9189e0c4844b",
+              "name": "start",
+              "value": "={{ $json.payload.scheduled_event.start_time }}",
+              "type": "string"
+            },
+            {
+              "id": "efb57581-e681-410d-8f5c-c3120af8879f",
+              "name": "address",
+              "value": "={{ $json.payload.questions_and_answers[0].answer }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6df68dd1-8295-45ab-bfb0-9424b5a54820",
+      "name": "Format Booking",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "email": "={{ $json.email }}",
+        "additionalFields": {
+          "firstName": "={{ $json.name.split(' ')[0] }}",
+          "lifeCycleStage": "salesqualifiedlead"
+        }
+      },
+      "id": "49012dee-4358-4b78-aa3b-20194b63ac74",
+      "name": "Update CRM Contact",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [
+        480,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Format Booking').item.json.email }}",
+        "subject": "=Your viewing at {{ $('Format Booking').item.json.address }} is confirmed",
+        "message": "=Hi {{ $('Format Booking').item.json.name }}, see you on {{ DateTime.fromISO($('Format Booking').item.json.start).toFormat('cccc d LLL, HH:mm') }}.",
+        "options": {}
+      },
+      "id": "a754da83-9da0-475e-9654-afb2421a4558",
+      "name": "Confirmation Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ DateTime.fromISO($('Format Booking').item.json.start).minus({ hours: 24 }) }}"
+      },
+      "id": "bf6576df-3884-42e8-adf6-5f691639f453",
+      "name": "Wait Until 24h Before",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "from": "+46700000000",
+        "to": "={{ $('Format Booking').item.json.phone }}",
+        "message": "=Reminder: viewing tomorrow at {{ $('Format Booking').item.json.address }}. Reply C to cancel.",
+        "options": {}
+      },
+      "id": "257e298e-1eb2-46a9-ac8e-e5e9cb2992b7",
+      "name": "SMS Reminder (24h)",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ DateTime.fromISO($('Format Booking').item.json.start).minus({ hours: 1 }) }}"
+      },
+      "id": "89e464e4-c8c1-42ee-8079-58adcc648855",
+      "name": "Wait Until 1h Before",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "from": "+46700000000",
+        "to": "={{ $('Format Booking').item.json.phone }}",
+        "message": "=See you in an hour at {{ $('Format Booking').item.json.address }}. Your agent will meet you at the entrance.",
+        "options": {}
+      },
+      "id": "bfe72b8c-23a9-4960-8101-51be7fcdac10",
+      "name": "SMS Reminder (1h)",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "events": [
+          "invitee.canceled"
+        ]
+      },
+      "id": "069291b8-b5b6-4655-95e3-0c9136c7c89e",
+      "name": "Viewing Cancelled",
+      "type": "n8n-nodes-base.calendlyTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        520
+      ],
+      "webhookId": "3c20a5bc-311c-4e30-b5ba-d6135af925fa"
+    },
+    {
+      "parameters": {
+        "email": "={{ $json.payload.email }}",
+        "additionalFields": {
+          "leadStatus": "UNQUALIFIED"
+        }
+      },
+      "id": "c25ecbf9-c87b-48be-91b2-6e5f0e1e77b3",
+      "name": "Flag in CRM",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#viewings",
+          "mode": "name"
+        },
+        "text": "=:x: {{ $('Viewing Cancelled').item.json.payload.name }} cancelled. Reason: {{ $('Viewing Cancelled').item.json.payload.cancellation.reason }}",
+        "otherOptions": {}
+      },
+      "id": "55dff967-bd62-4329-b0aa-c44d47267029",
+      "name": "Notify Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        480,
+        520
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Viewing Booked": {
+      "main": [
+        [
+          {
+            "node": "Format Booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Booking": {
+      "main": [
+        [
+          {
+            "node": "Update CRM Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update CRM Contact": {
+      "main": [
+        [
+          {
+            "node": "Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmation Email": {
+      "main": [
+        [
+          {
+            "node": "Wait Until 24h Before",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until 24h Before": {
+      "main": [
+        [
+          {
+            "node": "SMS Reminder (24h)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Reminder (24h)": {
+      "main": [
+        [
+          {
+            "node": "Wait Until 1h Before",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until 1h Before": {
+      "main": [
+        [
+          {
+            "node": "SMS Reminder (1h)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Viewing Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Flag in CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag in CRM": {
+      "main": [
+        [
+          {
+            "node": "Notify Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "61234697-888a-4d20-9e59-f6f2cb983a05",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

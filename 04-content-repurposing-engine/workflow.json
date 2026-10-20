@@ -1,0 +1,357 @@
+{
+  "name": "Blog to Social Content Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Blog to Social Content Engine\nEvery Monday it picks up new blog posts and turns each one into a LinkedIn post, an X thread and a newsletter blurb in your brand voice.\n\nDrafts land in the Notion content calendar for review.",
+        "height": 180,
+        "width": 480
+      },
+      "id": "29494c41-db36-4211-b625-41f5faab279e",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "8b478504-5710-4cf8-9f48-414ceb13d2f1",
+      "name": "Every Monday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://blog.example.com/rss.xml",
+        "options": {}
+      },
+      "id": "0b3a2b9a-321d-40fe-bff2-adde0b5dd5a9",
+      "name": "Read Blog RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "eec5a139-303c-42f1-8939-837651532708",
+              "leftValue": "={{ DateTime.fromISO($json.isoDate) }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              },
+              "rightValue": "={{ $now.minus({ days: 7 }) }}"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c8c49a8b-8204-4fcc-ae73-a60a4ff545a2",
+      "name": "Published Last 7 Days",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "a07b8750-a01d-43ae-b048-c195cfc9ddda",
+      "name": "Fetch Full Article",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "hasOutputParser": true,
+        "text": "=Title: {{ $('Read Blog RSS').item.json.title }}\nURL: {{ $('Read Blog RSS').item.json.link }}\n\n{{ $json.data }}",
+        "options": {
+          "systemMessage": "You are the brand copywriter. Write a LinkedIn post (max 1,200 characters, hook in line one), an X thread of 4 to 6 posts and a 60 word newsletter blurb. Plain, confident tone. No hashtags spam, max 3."
+        }
+      },
+      "id": "c18c19e0-c627-4313-bb5a-cdee9edb428e",
+      "name": "Write Social Posts",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-5",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "fddab2a5-3483-40bb-8996-5dc2e4bac44e",
+      "name": "Claude Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        960,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"linkedin\": \"...\",\n  \"x_thread\": [\"1/ ...\", \"2/ ...\"],\n  \"newsletter\": \"...\"\n}"
+      },
+      "id": "0728c86e-7fac-41cc-9738-4f8b3800b8fe",
+      "name": "Posts Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1140,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "postAs": "organization",
+        "organization": "12345678",
+        "text": "={{ $json.output.linkedin }}",
+        "additionalFields": {}
+      },
+      "id": "77423b07-7ffa-4325-9a29-02a769b0f504",
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turn the thread array into one item per post, keeping order\nconst thread = $input.first().json.output.x_thread;\nreturn thread.map((text, i) => ({ json: { text, position: i } }));"
+      },
+      "id": "61d7ca56-bb14-4e4d-aaab-3070d51e1bbf",
+      "name": "Build X Thread",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.x.com/2/tweets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twitterOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { text: $json.text } }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
+      },
+      "id": "52e32235-aab2-4e93-b203-2a6cf971d1dc",
+      "name": "Post to X API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Content Calendar"
+        },
+        "title": "={{ $('Read Blog RSS').item.json.title }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|status",
+              "statusValue": "Ready for review"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "15e9ada9-2c21-4597-b92f-d32c147f3b06",
+      "name": "Add to Content Calendar",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        500
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Monday 08:00": {
+      "main": [
+        [
+          {
+            "node": "Read Blog RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Blog RSS": {
+      "main": [
+        [
+          {
+            "node": "Published Last 7 Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Published Last 7 Days": {
+      "main": [
+        [
+          {
+            "node": "Fetch Full Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Full Article": {
+      "main": [
+        [
+          {
+            "node": "Write Social Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write Social Posts",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Write Social Posts",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Social Posts": {
+      "main": [
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build X Thread",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Add to Content Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build X Thread": {
+      "main": [
+        [
+          {
+            "node": "Post to X API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "81a63149-8806-4de9-82de-8dc729384631",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
