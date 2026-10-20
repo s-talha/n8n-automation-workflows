@@ -1,4 +1,4 @@
-# n8n Automation Portfolio
+# n8n Automation Workflows
 
 Production style n8n workflows covering AI agents, RAG, lead generation, finance ops and customer onboarding. Every workflow is a real, importable `workflow.json` with its own documentation.
 
