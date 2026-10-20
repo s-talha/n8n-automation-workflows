@@ -4,14 +4,14 @@ Production style n8n workflows covering AI agents, RAG, lead generation, finance
 
 | Workflow | What it does | Key integrations |
 |---|---|---|
-| [AI Real Estate Lead Qualifier](workflows/01-real-estate-lead-qualifier) | Scores inbound property leads with an AI agent and routes hot, warm and cold leads to the right follow up automatically. | OpenAI, HubSpot, Slack, Twilio |
-| [AI Support Inbox Agent (RAG + Tools)](workflows/02-ai-support-inbox-agent) | An AI agent that answers support emails from a Pinecone knowledge base and live order data, with a confidence gate and human escalation. | OpenAI, Pinecone, Gmail, Google Sheets |
-| [AI Invoice Processing and Approvals](workflows/03-invoice-processing) | Extracts structured data from PDF invoices with an LLM, routes large invoices for Slack approval and books bills in QuickBooks. | Anthropic Claude, Gmail, Slack, QuickBooks |
-| [Blog to Social Content Engine](workflows/04-content-repurposing-engine) | Repurposes new blog posts into LinkedIn posts, X threads and newsletter copy with Claude, then publishes and logs them in Notion. | Anthropic Claude, LinkedIn, X API, Notion |
-| [Booking Confirmations and SMS Reminders](workflows/05-booking-reminders) | Calendly bookings update HubSpot, send a confirmation and schedule 24 hour and 1 hour SMS reminders; cancellations alert the team. | Calendly, HubSpot, Gmail, Twilio |
-| [Stripe Customer Onboarding](workflows/06-stripe-customer-onboarding) | Provisions new SaaS customers the second a Stripe checkout completes and syncs them to Airtable, Notion, Gmail and Slack, with error alerting. | Stripe, REST APIs, Airtable, Notion |
-| [RAG Knowledge Base Chatbot](workflows/07-rag-knowledge-chatbot) | A two part RAG system: Google Drive documents are embedded into Pinecone automatically, and a chat agent with memory answers from them with citations. | OpenAI, Pinecone, Google Drive, LangChain |
-| [B2B Lead Enrichment and Scoring Pipeline](workflows/08-lead-enrichment-pipeline) | Daily pipeline that finds decision makers for target accounts, scores them against an ICP, de duplicates and syncs qualified contacts to HubSpot. | Apollo API, Google Sheets, HubSpot, Slack |
+| [AI Real Estate Lead Qualifier](01-real-estate-lead-qualifier) | Scores inbound property leads with an AI agent and routes hot, warm and cold leads to the right follow up automatically. | OpenAI, HubSpot, Slack, Twilio |
+| [AI Support Inbox Agent (RAG + Tools)](02-ai-support-inbox-agent) | An AI agent that answers support emails from a Pinecone knowledge base and live order data, with a confidence gate and human escalation. | OpenAI, Pinecone, Gmail, Google Sheets |
+| [AI Invoice Processing and Approvals](03-invoice-processing) | Extracts structured data from PDF invoices with an LLM, routes large invoices for Slack approval and books bills in QuickBooks. | Anthropic Claude, Gmail, Slack, QuickBooks |
+| [Blog to Social Content Engine](04-content-repurposing-engine) | Repurposes new blog posts into LinkedIn posts, X threads and newsletter copy with Claude, then publishes and logs them in Notion. | Anthropic Claude, LinkedIn, X API, Notion |
+| [Booking Confirmations and SMS Reminders](05-booking-reminders) | Calendly bookings update HubSpot, send a confirmation and schedule 24 hour and 1 hour SMS reminders; cancellations alert the team. | Calendly, HubSpot, Gmail, Twilio |
+| [Stripe Customer Onboarding](06-stripe-customer-onboarding) | Provisions new SaaS customers the second a Stripe checkout completes and syncs them to Airtable, Notion, Gmail and Slack, with error alerting. | Stripe, REST APIs, Airtable, Notion |
+| [RAG Knowledge Base Chatbot](07-rag-knowledge-chatbot) | A two part RAG system: Google Drive documents are embedded into Pinecone automatically, and a chat agent with memory answers from them with citations. | OpenAI, Pinecone, Google Drive, LangChain |
+| [B2B Lead Enrichment and Scoring Pipeline](08-lead-enrichment-pipeline) | Daily pipeline that finds decision makers for target accounts, scores them against an ICP, de duplicates and syncs qualified contacts to HubSpot. | Apollo API, Google Sheets, HubSpot, Slack |
 
 ## What these show
 
@@ -23,53 +23,53 @@ Production style n8n workflows covering AI agents, RAG, lead generation, finance
 
 ## Gallery
 
-### [AI Real Estate Lead Qualifier](workflows/01-real-estate-lead-qualifier)
+### [AI Real Estate Lead Qualifier](01-real-estate-lead-qualifier)
 
 Scores inbound property leads with an AI agent and routes hot, warm and cold leads to the right follow up automatically.
 
-![AI Real Estate Lead Qualifier](workflows/01-real-estate-lead-qualifier/canvas.png)
+![AI Real Estate Lead Qualifier](01-real-estate-lead-qualifier/canvas.png)
 
-### [AI Support Inbox Agent (RAG + Tools)](workflows/02-ai-support-inbox-agent)
+### [AI Support Inbox Agent (RAG + Tools)](02-ai-support-inbox-agent)
 
 An AI agent that answers support emails from a Pinecone knowledge base and live order data, with a confidence gate and human escalation.
 
-![AI Support Inbox Agent (RAG + Tools)](workflows/02-ai-support-inbox-agent/canvas.png)
+![AI Support Inbox Agent (RAG + Tools)](02-ai-support-inbox-agent/canvas.png)
 
-### [AI Invoice Processing and Approvals](workflows/03-invoice-processing)
+### [AI Invoice Processing and Approvals](03-invoice-processing)
 
 Extracts structured data from PDF invoices with an LLM, routes large invoices for Slack approval and books bills in QuickBooks.
 
-![AI Invoice Processing and Approvals](workflows/03-invoice-processing/canvas.png)
+![AI Invoice Processing and Approvals](03-invoice-processing/canvas.png)
 
-### [Blog to Social Content Engine](workflows/04-content-repurposing-engine)
+### [Blog to Social Content Engine](04-content-repurposing-engine)
 
 Repurposes new blog posts into LinkedIn posts, X threads and newsletter copy with Claude, then publishes and logs them in Notion.
 
-![Blog to Social Content Engine](workflows/04-content-repurposing-engine/canvas.png)
+![Blog to Social Content Engine](04-content-repurposing-engine/canvas.png)
 
-### [Booking Confirmations and SMS Reminders](workflows/05-booking-reminders)
+### [Booking Confirmations and SMS Reminders](05-booking-reminders)
 
 Calendly bookings update HubSpot, send a confirmation and schedule 24 hour and 1 hour SMS reminders; cancellations alert the team.
 
-![Booking Confirmations and SMS Reminders](workflows/05-booking-reminders/canvas.png)
+![Booking Confirmations and SMS Reminders](05-booking-reminders/canvas.png)
 
-### [Stripe Customer Onboarding](workflows/06-stripe-customer-onboarding)
+### [Stripe Customer Onboarding](06-stripe-customer-onboarding)
 
 Provisions new SaaS customers the second a Stripe checkout completes and syncs them to Airtable, Notion, Gmail and Slack, with error alerting.
 
-![Stripe Customer Onboarding](workflows/06-stripe-customer-onboarding/canvas.png)
+![Stripe Customer Onboarding](06-stripe-customer-onboarding/canvas.png)
 
-### [RAG Knowledge Base Chatbot](workflows/07-rag-knowledge-chatbot)
+### [RAG Knowledge Base Chatbot](07-rag-knowledge-chatbot)
 
 A two part RAG system: Google Drive documents are embedded into Pinecone automatically, and a chat agent with memory answers from them with citations.
 
-![RAG Knowledge Base Chatbot](workflows/07-rag-knowledge-chatbot/canvas.png)
+![RAG Knowledge Base Chatbot](07-rag-knowledge-chatbot/canvas.png)
 
-### [B2B Lead Enrichment and Scoring Pipeline](workflows/08-lead-enrichment-pipeline)
+### [B2B Lead Enrichment and Scoring Pipeline](08-lead-enrichment-pipeline)
 
 Daily pipeline that finds decision makers for target accounts, scores them against an ICP, de duplicates and syncs qualified contacts to HubSpot.
 
-![B2B Lead Enrichment and Scoring Pipeline](workflows/08-lead-enrichment-pipeline/canvas.png)
+![B2B Lead Enrichment and Scoring Pipeline](08-lead-enrichment-pipeline/canvas.png)
 
 ## Using a workflow
 
